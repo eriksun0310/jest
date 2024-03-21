@@ -10,14 +10,76 @@ import { rest } from "msw";
 import { server } from "../../../test/server";
 import Button from "../../exercise/07";
 
+//啟動 msw 的server 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 
 test("test api success", async () => {
-  // gogo
+  // 執行
+  render(<Button/>)
+
+  const btn = screen.getByRole("button", {
+    name:/請按/i
+  })
+  userEvent.click(btn)
+
+   // 驗證
+  expect(screen.getByText(/loading\.\.\.\.\.\.\.\./i)).toBeInTheDocument();
+
+  // waitFor: 等到有list 出現 才去執行後續的測試
+  await waitFor(()=>{
+    // screen.debug()
+    screen.getByRole("list")
+  })
+
+  const listItems = within(screen.getByRole("list")).getAllByRole("listitem")
+  expect(listItems).toHaveLength(3);
+  expect(listItems).toMatchInlineSnapshot(`
+Array [
+  <li>
+    1
+  </li>,
+  <li>
+    2
+  </li>,
+  <li>
+    3
+  </li>,
+]
+`)
+
+
+
+
+
 });
 
 test("test api fail", async () => {
-  // gogo
+  // 準備
+  server.use(
+    rest.get("http://my-backend/fake-data", (req, res, ctx) => {
+      return res(ctx.status(400), ctx.json("SOMETHING_WRONG"));
+    })
+  );
+
+  // 執行
+  render(<Button />);
+
+  const btn = screen.getByRole("button", {
+    name: /請按/i,
+  });
+
+  userEvent.click(btn);
+
+  // 驗證
+  expect(screen.getByText(/loading\.\.\.\.\.\.\.\./i)).toBeInTheDocument();
+
+  // 1
+  await waitFor(() => {
+    expect(screen.getByText(/SOMETHING_WRONG/i)).toBeInTheDocument();
+  });
+
+  // 2 findByText: waitFor + getByText
+  expect(await screen.findByText(/SOMETHING_WRONG/i)).toBeInTheDocument();
 });
